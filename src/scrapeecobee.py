@@ -5,6 +5,10 @@
 # This is to prove that our downstairs Lennox furnace is not working
 # properly. 
 #
+# To install the required dependencies, run:
+# pip3 install playwright
+# playwright install
+#
 # Usage: python3 scrapeecobee.py
 #
 # Mark Riordan  2024-11-26
