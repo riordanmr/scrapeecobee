@@ -15,10 +15,55 @@
 
 from playwright.sync_api import sync_playwright
 import os
+import sys
 import time
 from datetime import datetime
 
-def run(playwright):
+def get_timestamp():
+    return datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+def add_to_line(line, text):
+    if line:
+        line += ','
+    line += text
+    return line
+
+def scrape(page):
+    # Select elements, each of which contains various info for one thermostat.
+    elements = page.locator('div[data-qa-class="thermostat-tile"]')
+
+    line = ''
+    current_time = get_timestamp()
+    line = add_to_line(line, current_time)
+    #print(f'Current time: {current_time}')
+    # Loop through the elements and print their text content
+    for element in elements.all():
+        name_element = element.locator('div[data-qa-class="interactive-tile_title"]').first
+        thermostat_name = name_element.text_content()
+        #print('thermostat name: ' + thermostat_name)
+        line = add_to_line(line, thermostat_name)
+        # Skip to the next div element
+        next_div = name_element.locator('xpath=following-sibling::div').first
+        
+        # Find the next span element with data-qa-class="heat_setpoint" within the next div
+        next_heat_setpoint = next_div.locator('span[data-qa-class="heat_setpoint"]').first
+        setpoint = next_heat_setpoint.text_content()
+
+        # Print the text content of the next heat setpoint element
+        # print(f'  setpoint: {setpoint}')
+        line = add_to_line(line, setpoint)
+
+        temp_div = element.locator('div[data-qa-class="temperature"]').first
+        temp_span = temp_div.locator('span').first
+        temp = temp_span.text_content()
+        # print(f'  current temperature: {temp}')
+        line = add_to_line(line, temp)
+
+    print(line)
+    sys.stdout.flush()
+
+def login(playwright):
+    sys.stderr.write(f'{get_timestamp()} Logging in...\n')
     browser = playwright.chromium.launch(headless=False)
     page = browser.new_page()
     page.goto('https://auth.ecobee.com/u/login')
@@ -35,39 +80,23 @@ def run(playwright):
 
     # Wait for navigation to complete
     page.wait_for_load_state('networkidle')
+    return browser, page
 
-    # Select elements, each of which contains various info for one thermostat.
-    elements = page.locator('div[data-qa-class="thermostat-tile"]')
-
-    # Compute the number of elements
-    # num_elements = elements.count()
-    # print(f'Number of elements: {num_elements}')
-    while True:
-        current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        print(f'Current time: {current_time}')
-        # Loop through the elements and print their text content
-        for element in elements.all():
-            name_element = element.locator('div[data-qa-class="interactive-tile_title"]').first
-            thermostat_name = name_element.text_content()
-            print('thermostat name: ' + thermostat_name)
-            # Skip to the next div element
-            next_div = name_element.locator('xpath=following-sibling::div').first
-            
-            # Find the next span element with data-qa-class="heat_setpoint" within the next div
-            next_heat_setpoint = next_div.locator('span[data-qa-class="heat_setpoint"]').first
-            setpoint = next_heat_setpoint.text_content()
-
-            # Print the text content of the next heat setpoint element
-            print(f'  setpoint: {setpoint}')
-
-            temp_div = element.locator('div[data-qa-class="temperature"]').first
-            temp_span = temp_div.locator('span').first
-            temp = temp_span.text_content()
-            print(f'  current temperature: {temp}')
-
-        time.sleep(20)
-    page.wait_for_timeout(5000)
+def run_for_a_while(playwright):
+    [browser,page] = login(playwright)
+    for _ in range(40):
+        scrape(page)
+        time.sleep(30)
+    sys.stderr.write(f'{get_timestamp()} Closing browser...\n')
     browser.close()
+
+def run(playwright):
+    while True:
+        try:
+            run_for_a_while(playwright)
+        except Exception as e:
+            print(f'Error: {e}')
+            time.sleep(30)
 
 with sync_playwright() as playwright:
     run(playwright)
