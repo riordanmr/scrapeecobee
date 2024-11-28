@@ -36,8 +36,10 @@ def scrape(page):
     current_time = get_timestamp()
     line = add_to_line(line, current_time)
     #print(f'Current time: {current_time}')
-    # Loop through the elements and print their text content
+    # Loop through the elements and print their text content.
+    n_thermostats = 0
     for element in elements.all():
+        n_thermostats += 1
         name_element = element.locator('div[data-qa-class="interactive-tile_title"]').first
         thermostat_name = name_element.text_content()
         #print('thermostat name: ' + thermostat_name)
@@ -61,6 +63,7 @@ def scrape(page):
 
     print(line)
     sys.stdout.flush()
+    return n_thermostats
 
 def login(playwright):
     sys.stderr.write(f'{get_timestamp()} Logging in...\n')
@@ -84,8 +87,11 @@ def login(playwright):
 
 def run_for_a_while(playwright):
     [browser,page] = login(playwright)
-    for _ in range(40):
-        scrape(page)
+    for _ in range(10):
+        n_thermostats = scrape(page)
+        if n_thermostats != 3:
+            sys.stderr.write(f'Only {n_thermostats} thermostats found; bouncing browser...\n')
+            break
         time.sleep(30)
     sys.stderr.write(f'{get_timestamp()} Closing browser...\n')
     browser.close()
