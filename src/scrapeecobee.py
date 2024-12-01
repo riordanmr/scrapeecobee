@@ -92,7 +92,7 @@ def run_for_a_while(playwright):
         if n_thermostats != 3:
             sys.stderr.write(f'Only {n_thermostats} thermostats found; bouncing browser...\n')
             break
-        time.sleep(30)
+        time.sleep(60)
     sys.stderr.write(f'{get_timestamp()} Closing browser...\n')
     browser.close()
 
