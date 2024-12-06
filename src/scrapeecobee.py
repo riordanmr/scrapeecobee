@@ -19,6 +19,10 @@ import sys
 import time
 from datetime import datetime
 
+# Declare global variables
+username = None
+password = None
+
 def get_timestamp():
     return datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
@@ -66,16 +70,11 @@ def scrape(page):
     return n_thermostats
 
 def login(playwright):
+    global username, password
     sys.stderr.write(f'{get_timestamp()} Logging in...\n')
     browser = playwright.chromium.launch(headless=False)
     page = browser.new_page()
     page.goto('https://auth.ecobee.com/u/login')
-
-    # Fetch username and password from environment variables
-    username = os.getenv('ECOBEE_USERNAME')
-    password = os.getenv('ECOBEE_PASSWORD')
-    if not username or not password:
-        raise ValueError('Please set the ECOBEE_USERNAME and ECOBEE_PASSWORD environment variables')
     
     page.locator('#username').fill(username)
     page.locator('#password').fill(password)
@@ -87,7 +86,7 @@ def login(playwright):
 
 def run_for_a_while(playwright):
     [browser,page] = login(playwright)
-    for _ in range(10):
+    for _ in range(20):
         n_thermostats = scrape(page)
         if n_thermostats != 3:
             sys.stderr.write(f'Only {n_thermostats} thermostats found; bouncing browser...\n')
@@ -97,12 +96,19 @@ def run_for_a_while(playwright):
     browser.close()
 
 def run(playwright):
-    while True:
-        try:
-            run_for_a_while(playwright)
-        except Exception as e:
-            print(f'Error: {e}')
-            time.sleep(30)
+    # Fetch username and password from environment variables
+    global username, password
+    username = os.getenv('ECOBEE_USERNAME')
+    password = os.getenv('ECOBEE_PASSWORD')
+    if username is None or password is None:
+        raise ValueError('Please set the ECOBEE_USERNAME and ECOBEE_PASSWORD environment variables')
+    else:
+        while True:
+            try:
+                run_for_a_while(playwright)
+            except Exception as e:
+                print(f'Error: {e}')
+                time.sleep(30)
 
 with sync_playwright() as playwright:
     run(playwright)
