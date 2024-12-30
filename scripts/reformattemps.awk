@@ -14,7 +14,7 @@
 BEGIN { FS = OFS = "," }
 
 {
-    if(length($0) > 24 ) {
+    if(length($0) > 24 && index($0,"20") == 1) {
         timestamp = $1
         kalika = ""
         upstairs = ""
